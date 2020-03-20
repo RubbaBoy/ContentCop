@@ -4,9 +4,11 @@ import com.uddernetworks.contentcop.config.ConfigManager;
 import com.uddernetworks.contentcop.config.HOCONConfigManager;
 import com.uddernetworks.contentcop.database.DatabaseManager;
 import com.uddernetworks.contentcop.database.HSQLDBDatabaseManager;
+import com.uddernetworks.contentcop.discord.BatchImageInserter;
 import com.uddernetworks.contentcop.discord.DataScraper;
 import com.uddernetworks.contentcop.discord.DiscordManager;
 import com.uddernetworks.contentcop.discord.HelpUtility;
+import com.uddernetworks.contentcop.discord.ServerCache;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -23,7 +25,9 @@ public class ContentCop {
 
     private final ConfigManager configManager;
     private final DiscordManager discordManager;
+    private final ServerCache serverCache;
     private final DatabaseManager databaseManager;
+    private final BatchImageInserter batchImageInserter;
     private final DataScraper dataScraper;
 
     public static void main(String[] args) {
@@ -42,8 +46,14 @@ public class ContentCop {
     public ContentCop(String config) throws SQLException, LoginException {
         this.configManager = new HOCONConfigManager(new File(config));
         this.databaseManager = new HSQLDBDatabaseManager(this, configManager.get(DATABASE_PATH));
+        this.serverCache = new ServerCache(databaseManager);
         this.discordManager = new DiscordManager(this, configManager);
-        this.dataScraper = new DataScraper(discordManager, databaseManager);
+        this.batchImageInserter = new BatchImageInserter(databaseManager);
+        this.dataScraper = new DataScraper(discordManager, databaseManager, batchImageInserter, serverCache);
+
+        dataScraper.cleanData().join();
+
+        discordManager.init();
 
         HelpUtility.setCommandPrefix(configManager.get(PREFIX));
     }
@@ -62,6 +72,14 @@ public class ContentCop {
 
     public DatabaseManager getDatabaseManager() {
         return databaseManager;
+    }
+
+    public ServerCache getServerCache() {
+        return serverCache;
+    }
+
+    public BatchImageInserter getBatchImageInserter() {
+        return batchImageInserter;
     }
 
     public DataScraper getDataScraper() {

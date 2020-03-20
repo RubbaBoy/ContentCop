@@ -3,6 +3,7 @@ package com.uddernetworks.contentcop.discord.command;
 import com.uddernetworks.contentcop.database.DatabaseManager;
 import com.uddernetworks.contentcop.discord.DataScraper;
 import com.uddernetworks.contentcop.discord.EmbedUtils;
+import com.uddernetworks.contentcop.discord.ServerCache;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.TextChannel;
 import org.slf4j.Logger;
@@ -14,19 +15,31 @@ public class SetupCommand extends Command {
 
     private final DatabaseManager databaseManager;
     private final DataScraper dataScraper;
+    private final ServerCache serverCache;
 
     public SetupCommand(CommandManager commandManager) {
         super("setup", commandManager);
         var contentCop = commandManager.getContentCop();
         this.databaseManager = contentCop.getDatabaseManager();
         this.dataScraper = contentCop.getDataScraper();
+        this.serverCache = contentCop.getServerCache();
     }
 
     @Override
     public void onCommand(Member author, TextChannel channel, String[] args) {
         var guild = channel.getGuild();
 
-        if (args.length == 0) {
+//        databaseManager.getUser(author).thenAccept(currentReposts -> {
+//            System.out.println("currentReposts = " + currentReposts);
+//        }).join();
+//
+//        databaseManager.getUsers(author.getGuild()).thenAccept(map -> {
+//            System.out.println("map = " + map);
+//        }).join();
+
+//        if (true) return;
+
+         if (args.length == 0) {
             databaseManager.getServer(guild).thenAcceptAsync(optional ->
                     optional.ifPresentOrElse(complete -> {
                         if (complete) {
@@ -37,17 +50,21 @@ public class SetupCommand extends Command {
                     }, () -> {
                         try {
                             EmbedUtils.sendEmbed(channel, author, "Setting up", "Setting up the server! Reading all images and storing them into the database.");
-                            LOGGER.info("bruh one");
                             long start = System.currentTimeMillis();
                             dataScraper.scrapeServer(guild)
-                                    .thenRun(() -> LOGGER.info("Done scraping server after {}ms", System.currentTimeMillis() - start));
+                                    .thenRun(() -> {
+                                        databaseManager.updateServer(guild, true).join();
+                                        serverCache.addServer(guild.getIdLong());
+                                        LOGGER.info("Done scraping server after {}ms", System.currentTimeMillis() - start);
+                                    });
                         } catch (Exception e) {
-                            e.printStackTrace();
+                            LOGGER.error("Error setting up server " + guild.getId(), e);
                         }
                     }));
         } else if (args.length == 1 && args[0].equalsIgnoreCase("reset")) {
             EmbedUtils.sendEmbed(channel, author, "Resetting images", "Resetting the scraped images from the Discord server. This is for testing only.");
             dataScraper.deleteServer(guild);
+            serverCache.removeServer(guild.getIdLong());
         } else {
             syntaxError(author, channel);
         }

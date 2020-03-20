@@ -6,10 +6,10 @@ import net.dv8tion.jda.api.entities.Message;
 
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.Future;
 
 public interface DatabaseManager {
     Connection getConnection() throws SQLException;
@@ -28,11 +28,17 @@ public interface DatabaseManager {
 
     CompletableFuture<Void> addServer(Guild guild);
 
-    CompletableFuture<Void> updateServer(Guild guild, boolean processing);
+    CompletableFuture<Void> updateServer(Guild guild, boolean complete);
 
     CompletableFuture<Void> deleteServer(Guild guild);
+
+    CompletableFuture<List<Long>> getServers(boolean complete);
 
     CompletableFuture<Map<Long, Integer>> getUsers(Guild guild);
 
     CompletableFuture<Integer> getUser(Member member);
+
+    CompletableFuture<Void> addUser(Member member, int amount);
+
+    CompletableFuture<Void> incrementUser(Member member, int amount);
 }

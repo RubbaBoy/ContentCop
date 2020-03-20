@@ -14,12 +14,12 @@ import org.slf4j.LoggerFactory;
 
 import javax.sql.DataSource;
 import java.io.File;
-import java.io.UncheckedIOException;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -51,7 +51,7 @@ public class HSQLDBDatabaseManager implements DatabaseManager {
 
         var filePath = new File(databasePath + File.separator + "ContentCop");
         filePath.getParentFile().mkdirs();
-        config.setJdbcUrl("jdbc:hsqldb:file:" + filePath);
+        config.setJdbcUrl("jdbc:hsqldb:file:" + filePath.getAbsolutePath());
         config.setUsername("SA");
         config.setPassword("");
 
@@ -91,7 +91,9 @@ public class HSQLDBDatabaseManager implements DatabaseManager {
             statement.setLong(1, guild.getIdLong());
             statement.setBytes(2, content);
 
-            return getFirst(iterResultSet(statement.executeQuery()))
+            var first = getFirst(iterResultSet(statement.executeQuery()));
+
+            return first
                     .map(res -> new DatabaseImage(guild.getIdLong(), res.get("channel"), res.get("message"), res.get("author"), content));
         }, Optional.empty());
     }
@@ -109,6 +111,7 @@ public class HSQLDBDatabaseManager implements DatabaseManager {
 
     @Override
     public CompletableFuture<Void> addImages(Map<Message, byte[]> data) {
+        LOGGER.info("Adding {} images", data.size());
         return update("add_image", statement -> {
             data.forEach((message, content) -> {
                 try {
@@ -123,7 +126,7 @@ public class HSQLDBDatabaseManager implements DatabaseManager {
                 }
             });
             statement.executeBatch();
-        });
+        }, false);
     }
 
     @Override
@@ -155,9 +158,9 @@ public class HSQLDBDatabaseManager implements DatabaseManager {
     }
 
     @Override
-    public CompletableFuture<Void> updateServer(Guild guild, boolean processing) {
+    public CompletableFuture<Void> updateServer(Guild guild, boolean complete) {
         return update("update_server", statement -> {
-            statement.setBoolean(1, processing);
+            statement.setBoolean(1, complete);
             statement.setLong(2, guild.getIdLong());
         });
     }
@@ -166,6 +169,17 @@ public class HSQLDBDatabaseManager implements DatabaseManager {
     public CompletableFuture<Void> deleteServer(Guild guild) {
         return update("delete_server", statement ->
                 statement.setLong(1, guild.getIdLong()));
+    }
+
+    @Override
+    public CompletableFuture<List<Long>> getServers(boolean complete) {
+        return query("select_servers", statement -> {
+            statement.setBoolean(1, complete);
+            return iterResultSet(statement.executeQuery())
+                    .stream()
+                    .map(res -> res.<Long>get("server"))
+                    .collect(Collectors.toUnmodifiableList());
+        }, Collections.emptyList());
     }
 
     @Override
@@ -181,13 +195,31 @@ public class HSQLDBDatabaseManager implements DatabaseManager {
 
     @Override
     public CompletableFuture<Integer> getUser(Member member) {
-        return query("select_users", statement -> {
-            statement.setLong(1, member.getGuild().getIdLong());
-            statement.setLong(2, member.getIdLong());
+        return query("select_user", statement -> {
+            statement.setString(1, member.getId());
+            statement.setString(2, member.getGuild().getId());
 
             return getFirst(iterResultSet(statement.executeQuery()))
                     .map(res -> res.<Integer>get("reposts")).orElse(0);
         }, 0);
+    }
+
+    @Override
+    public CompletableFuture<Void> addUser(Member member, int amount) {
+        return update("add_user", statement -> {
+            statement.setLong(1, member.getIdLong());
+            statement.setLong(2, member.getGuild().getIdLong());
+            statement.setInt(3, amount);
+        });
+    }
+
+    @Override
+    public CompletableFuture<Void> incrementUser(Member member, int amount) {
+        return update("increment_user", statement -> {
+            statement.setInt(1, amount);
+            statement.setLong(2, member.getIdLong());
+            statement.setLong(3, member.getGuild().getIdLong());
+        });
     }
 
     private List<GenericMap> iterResultSet(ResultSet resultSet) throws SQLException {
@@ -219,16 +251,21 @@ public class HSQLDBDatabaseManager implements DatabaseManager {
     }
 
     private CompletableFuture<Void> update(String queryName, DatabaseUpdate accessor) {
-        return update(connection -> connection.prepareStatement(binder.getUpdate(queryName)), accessor);
+        return update(connection -> connection.prepareStatement(binder.getUpdate(queryName)), accessor, true);
     }
 
-    private CompletableFuture<Void> update(PSCreator creator, DatabaseUpdate accessor) {
+    private CompletableFuture<Void> update(String queryName, DatabaseUpdate accessor, boolean autoExecute) {
+        return update(connection -> connection.prepareStatement(binder.getUpdate(queryName)), accessor, autoExecute);
+    }
+
+    private CompletableFuture<Void> update(PSCreator creator, DatabaseUpdate accessor, boolean autoExecute) {
         return useDatabase(creator, statement -> {
             try {
-                LOGGER.info("before");
                 accessor.run(statement);
-                LOGGER.info("executing");
-                statement.executeUpdate();
+
+                if (autoExecute) {
+                    statement.executeUpdate();
+                }
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -250,12 +287,10 @@ public class HSQLDBDatabaseManager implements DatabaseManager {
 
     private <T> CompletableFuture<T> useDatabase(PSCreator creator, DatabaseQuery<T> accessor, T def) {
         return CompletableFuture.supplyAsync(() -> {
-            LOGGER.info("supply");
             try (var connection = getConnection();
                  var statement = creator.create(connection)) {
-                LOGGER.info("in here");
                 return accessor.run(statement);
-            } catch (SQLException e) {
+            } catch (Exception e) {
                 LOGGER.error("An error has occurred", e);
                 return def;
             }

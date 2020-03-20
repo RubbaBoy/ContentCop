@@ -4,6 +4,7 @@ import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 public class Utility {
@@ -17,5 +18,16 @@ public class Utility {
         }
 
         return Optional.ofNullable(list.get(0));
+    }
+
+    public static <T> CompletableFuture<Void> allOf(List<CompletableFuture<T>> futures) {
+        return CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new));
+    }
+
+    public static <T> CompletableFuture<List<T>> allOfResult(List<CompletableFuture<T>> futures) {
+        return CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new))
+                .thenApply($ -> futures.stream()
+                        .map(CompletableFuture::join)
+                        .collect(Collectors.toUnmodifiableList()));
     }
 }

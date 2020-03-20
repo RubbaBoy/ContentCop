@@ -35,9 +35,18 @@ public class DiscordManager extends ListenerAdapter {
                 .addEventListeners(new EmbedUtils())
                 .build();
 
-        (this.commandManager = new CommandManager(contentCop, this, configManager))
+        this.commandManager = new CommandManager(contentCop, this, configManager);
+    }
+
+    /**
+     * Registers commands and listeners. Should be invoked once all managers have been initialized.
+     */
+    public void init() {
+          commandManager
                 .registerCommand(HelpCommand::new)
                 .registerCommand(SetupCommand::new);
+
+          jda.addEventListener(new MessageListener(jda, contentCop.getDatabaseManager(), contentCop.getDataScraper(), contentCop.getBatchImageInserter(), contentCop.getServerCache()));
     }
 
     public JDA getJDA() {

@@ -17,7 +17,7 @@ public class ResourceBinder implements Binder {
         this.resourceName = resourceName;
 
         this.data = BINDER_PATTERN.matcher(Utility.readResource(resourceName)).results()
-                .map(result -> new BindData(result.group(1), BindType.fromName(result.group(2)).orElseThrow(), result.group(3), result.group(4)))
+                .map(result -> new BindData(result.group(1), BindType.fromName(result.group(2)).orElseThrow(), result.group(3), result.group(4).trim()))
                 .collect(Collectors.toUnmodifiableList());
     }
 
