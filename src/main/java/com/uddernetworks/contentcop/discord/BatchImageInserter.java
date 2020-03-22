@@ -1,17 +1,13 @@
 package com.uddernetworks.contentcop.discord;
 
 import com.uddernetworks.contentcop.database.DatabaseImage;
-import com.uddernetworks.contentcop.database.DatabaseManager;
 import com.uddernetworks.contentcop.image.ImageStore;
 import net.dv8tion.jda.api.entities.Message;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
 
 public class BatchImageInserter {
 

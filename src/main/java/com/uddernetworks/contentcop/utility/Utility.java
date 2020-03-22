@@ -2,13 +2,10 @@ package com.uddernetworks.contentcop.utility;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
-import java.util.Collections;
-import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Optional;
-import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.BiConsumer;
 import java.util.stream.Collector;
@@ -23,8 +20,8 @@ public class Utility {
         return (ZWS + " ").repeat(amount);
     }
 
-    public static String padRight(String string, int amount) {
-        return string + space(Math.max(amount - string.length(), 0));
+    public static String padRight(Object string, int amount) {
+        return string + space(Math.max(amount - string.toString().length(), 0));
     }
 
     public static String readResource(String resource) {

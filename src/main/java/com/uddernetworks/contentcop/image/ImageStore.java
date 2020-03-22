@@ -1,10 +1,8 @@
 package com.uddernetworks.contentcop.image;
 
 import com.uddernetworks.contentcop.database.DatabaseImage;
-import net.dv8tion.jda.api.entities.Guild;
 
 import java.util.List;
-import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Future;
 import java.util.function.Function;
@@ -37,9 +35,9 @@ public interface ImageStore {
     /**
      * Invoked test for every image from the given guild, until the test returns non-null.
      *
+     * @param <T> The returning type of <code>test</code>
      * @param server The server to get the images from
      * @param test The function to invoke
-     * @param <T> The returning type of <code>test</code>
      * @return A {@link CompletableFuture} of the task
      */
     <T> Future<Stream<T>> iterateUntilImages(long server, Function<DatabaseImage, T> test);

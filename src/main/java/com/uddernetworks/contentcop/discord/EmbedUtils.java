@@ -18,7 +18,7 @@ import java.util.function.Consumer;
 
 public class EmbedUtils extends ListenerAdapter {
 
-    private static Map<Message, Long> messageRequesters = Collections.synchronizedMap(new HashMap<>());
+    private static final Map<Message, Long> messageRequesters = Collections.synchronizedMap(new HashMap<>());
 
     public static void error(TextChannel channel, Member author, String message) {
         EmbedBuilder eb = new EmbedBuilder();
@@ -36,42 +36,42 @@ public class EmbedUtils extends ListenerAdapter {
     }
 
     public static Message sendEmbed(TextChannel channel, Member author, String title, String description) {
-        return sendEmbed(channel, author, title, embed -> embed.setDescription(description), true);
+        return sendEmbed(channel, author, title, null, embed -> embed.setDescription(description));
     }
 
     public static Message sendEmbed(TextChannel channel, Member author, String title, Consumer<EmbedBuilder> embedBuilderConsumer) {
-        return sendEmbed(channel, author, title, embedBuilderConsumer, true);
+        return sendEmbed(channel, author, title, null, embedBuilderConsumer);
     }
 
-    public static Message sendEmbed(TextChannel channel, Member author, String title, String description, boolean showDeleteReaction) {
-        return sendEmbed(channel, author, title, embed -> embed.setDescription(description), showDeleteReaction);
-    }
-
-    public static Message sendEmbed(TextChannel channel, Member author, String title, Consumer<EmbedBuilder> embedBuilderConsumer, boolean showDeleteReaction) {
-        var message = channel.sendMessage(createEmbed(author, title, embedBuilderConsumer)).complete();
-        if (showDeleteReaction) {
-            message.addReaction("U+1F5D1").queue();
-        }
+    public static Message sendEmbed(TextChannel channel, Member author, String title, String extraFooter, Consumer<EmbedBuilder> embedBuilderConsumer) {
+        var message = channel.sendMessage(createEmbed(author, title, extraFooter, embedBuilderConsumer)).complete();
 
         if (author != null) {
+            message.addReaction("U+1F5D1").queue();
             messageRequesters.put(message, author.getIdLong());
         }
         return message;
     }
 
     public static MessageEmbed createEmbed(String title, Consumer<EmbedBuilder> embedBuilderConsumer) {
-        return createEmbed(null, title, embedBuilderConsumer);
+        return createEmbed(null, title, null, embedBuilderConsumer);
     }
 
-    public static MessageEmbed createEmbed(Member author, String title, Consumer<EmbedBuilder> embedBuilderConsumer) {
+    public static MessageEmbed createEmbed(Member author, String title, String extraFooter, Consumer<EmbedBuilder> embedBuilderConsumer) {
         EmbedBuilder eb = new EmbedBuilder();
 
         eb.setTitle(title, null);
         eb.setColor(new Color(0x424BE9));
 
+        String footer = extraFooter == null ? "" : extraFooter;
+        String icon = null;
+
         if (author != null) {
-            eb.setFooter("Requested by " + author.getEffectiveName(), author.getUser().getAvatarUrl());
+            footer = "Requested by " + author.getEffectiveName() + " | " + footer;
+            icon = author.getUser().getAvatarUrl();
         }
+
+        eb.setFooter(footer, icon);
 
         embedBuilderConsumer.accept(eb);
         return eb.build();

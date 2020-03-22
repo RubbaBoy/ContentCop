@@ -4,23 +4,22 @@ import com.uddernetworks.contentcop.ContentCop;
 import com.uddernetworks.contentcop.config.ConfigManager;
 import com.uddernetworks.contentcop.discord.command.CommandManager;
 import com.uddernetworks.contentcop.discord.command.HelpCommand;
+import com.uddernetworks.contentcop.discord.command.InfoCommand;
 import com.uddernetworks.contentcop.discord.command.LeaderboardCommand;
 import com.uddernetworks.contentcop.discord.command.SetupCommand;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
 import net.dv8tion.jda.api.OnlineStatus;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
-import net.dv8tion.jda.api.requests.GatewayIntent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.security.auth.login.LoginException;
-
 import java.util.Arrays;
 import java.util.stream.Collectors;
 
 import static com.uddernetworks.contentcop.config.Config.TOKEN;
-import static net.dv8tion.jda.api.requests.GatewayIntent.*;
+import static net.dv8tion.jda.api.requests.GatewayIntent.values;
 
 public class DiscordManager extends ListenerAdapter {
 
@@ -51,9 +50,10 @@ public class DiscordManager extends ListenerAdapter {
           commandManager
                 .registerCommand(HelpCommand::new)
                 .registerCommand(SetupCommand::new)
-                .registerCommand(LeaderboardCommand::new);
+                .registerCommand(LeaderboardCommand::new)
+                .registerCommand(InfoCommand::new);
 
-          jda.addEventListener(new MessageListener(jda, contentCop.getDatabaseManager(), contentCop.getDataScraper(), contentCop.getBatchImageInserter(), contentCop.getServerCache(), contentCop.getImageProcessor()));
+          jda.addEventListener(new MessageListener(jda, configManager, contentCop.getDatabaseManager(), contentCop.getDataScraper(), contentCop.getBatchImageInserter(), contentCop.getServerCache(), contentCop.getImageProcessor()));
     }
 
     public JDA getJDA() {

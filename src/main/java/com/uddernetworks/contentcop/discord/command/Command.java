@@ -34,4 +34,8 @@ public abstract class Command {
     public void onCommand(Member author, TextChannel channel, String[] args) {}
     public void onCommand(Member author, TextChannel channel, String rawMessage) {}
     public void onCommand(Member author, TextChannel channel, GuildMessageReceivedEvent event) {}
+
+    String bold(Object text) {
+        return "**" + text + "**";
+    }
 }

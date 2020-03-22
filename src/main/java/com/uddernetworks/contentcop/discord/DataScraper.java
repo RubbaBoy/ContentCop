@@ -130,7 +130,7 @@ public class DataScraper {
 
                 curr.forEach(message -> getImagesFrom(message).forEach(hash -> batchImageInserter.addHash(message, hash.toByteArray()).join()));
 
-                if (curr.size() != maxMessages) {
+                if (curr.size() != retrieveSize) {
                     break;
                 }
             }

@@ -1,7 +1,5 @@
 package com.uddernetworks.contentcop.database.bind;
 
-import java.sql.PreparedStatement;
-
 public class BindData {
     private final String name;
     private final BindType type;

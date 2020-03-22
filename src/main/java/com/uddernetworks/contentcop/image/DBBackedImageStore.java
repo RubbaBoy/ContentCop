@@ -1,19 +1,18 @@
 package com.uddernetworks.contentcop.image;
 
-import com.uddernetworks.contentcop.utility.SEntry;
-import com.uddernetworks.contentcop.utility.Utility;
 import com.uddernetworks.contentcop.database.DatabaseImage;
 import com.uddernetworks.contentcop.database.DatabaseManager;
 import com.uddernetworks.contentcop.discord.DummyGuild;
+import com.uddernetworks.contentcop.utility.SEntry;
+import com.uddernetworks.contentcop.utility.Utility;
 import net.dv8tion.jda.api.entities.Guild;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
@@ -38,6 +37,10 @@ public class DBBackedImageStore implements ImageStore {
 
     private CompletableFuture<Map.Entry<Long, List<DatabaseImage>>> getPairedImages(Guild guild) {
         return databaseManager.getImages(guild).thenApply(images -> new SEntry<>(guild.getIdLong(), new ArrayList<>(images)));
+    }
+
+    public List<DatabaseImage> getImages(Guild guild) {
+        return images.getOrDefault(guild.getIdLong(), Collections.emptyList());
     }
 
     @Override

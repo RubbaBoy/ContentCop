@@ -10,14 +10,13 @@ import com.uddernetworks.contentcop.discord.DiscordManager;
 import com.uddernetworks.contentcop.discord.HelpUtility;
 import com.uddernetworks.contentcop.discord.ServerCache;
 import com.uddernetworks.contentcop.image.DBBackedImageStore;
+import com.uddernetworks.contentcop.image.DHashImageProcessor;
 import com.uddernetworks.contentcop.image.ImageStore;
-import com.uddernetworks.contentcop.image.PerceptualImageProcessor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.security.auth.login.LoginException;
 import java.io.File;
-import java.io.IOException;
 import java.sql.SQLException;
 
 import static com.uddernetworks.contentcop.config.Config.DATABASE_PATH;
@@ -36,7 +35,7 @@ public class ContentCop {
     private final ImageProcessor imageProcessor;
     private final DataScraper dataScraper;
 
-    public static void main(String[] args) throws IOException {
+    public static void main(String[] args) {
         if (args.length < 1) {
             LOGGER.error("You must supply the config file to use");
             return;
@@ -56,7 +55,7 @@ public class ContentCop {
         this.discordManager = new DiscordManager(this, configManager);
         this.imageStore = new DBBackedImageStore(databaseManager);
         this.batchImageInserter = new BatchImageInserter(imageStore);
-        this.imageProcessor = new PerceptualImageProcessor(databaseManager, imageStore);
+        this.imageProcessor = new DHashImageProcessor(imageStore);
         this.dataScraper = new DataScraper(discordManager, databaseManager, batchImageInserter, serverCache, imageProcessor);
 
         dataScraper.cleanData().join();

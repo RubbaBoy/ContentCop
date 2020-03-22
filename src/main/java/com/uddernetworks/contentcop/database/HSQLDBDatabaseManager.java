@@ -1,10 +1,10 @@
 package com.uddernetworks.contentcop.database;
 
 import com.uddernetworks.contentcop.ContentCop;
-import com.uddernetworks.contentcop.utility.SEntry;
 import com.uddernetworks.contentcop.database.bind.BindType;
 import com.uddernetworks.contentcop.database.bind.Binder;
 import com.uddernetworks.contentcop.database.bind.ResourceBinder;
+import com.uddernetworks.contentcop.utility.SEntry;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import net.dv8tion.jda.api.entities.Guild;
