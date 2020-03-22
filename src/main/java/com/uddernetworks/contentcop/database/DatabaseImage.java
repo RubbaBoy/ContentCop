@@ -1,12 +1,31 @@
 package com.uddernetworks.contentcop.database;
 
+import net.dv8tion.jda.api.entities.Message;
+
+import java.util.BitSet;
+
 public class DatabaseImage {
 
-    private long server;
-    private long channel;
-    private long message;
-    private long author;
-    private byte[] content;
+    private final long server;
+    private final long channel;
+    private final long message;
+    private final long author;
+    private final byte[] content;
+
+    private final BitSet bitSet;
+
+    public DatabaseImage(Message message, byte[] content) {
+        this(message.getGuild().getIdLong(), message.getChannel().getIdLong(), message.getIdLong(), message.getAuthor().getIdLong(), content);
+    }
+
+    public DatabaseImage(DatabaseImage image) {
+        this.server = image.server;
+        this.channel = image.channel;
+        this.message = image.message;
+        this.author = image.author;
+        this.content = image.content;
+        this.bitSet = image.bitSet;
+    }
 
     public DatabaseImage(long server, long channel, long message, long author, byte[] content) {
         this.server = server;
@@ -14,45 +33,31 @@ public class DatabaseImage {
         this.message = message;
         this.author = author;
         this.content = content;
+
+        this.bitSet = BitSet.valueOf(content);
     }
 
     public long getServer() {
         return server;
     }
 
-    public void setServer(long server) {
-        this.server = server;
-    }
-
     public long getChannel() {
         return channel;
-    }
-
-    public void setChannel(long channel) {
-        this.channel = channel;
     }
 
     public long getMessage() {
         return message;
     }
 
-    public void setMessage(long message) {
-        this.message = message;
-    }
-
     public long getAuthor() {
         return author;
-    }
-
-    public void setAuthor(long author) {
-        this.author = author;
     }
 
     public byte[] getContent() {
         return content;
     }
 
-    public void setContent(byte[] content) {
-        this.content = content;
+    public BitSet getBitSet() {
+        return bitSet;
     }
 }

@@ -36,13 +36,24 @@ public class EmbedUtils extends ListenerAdapter {
     }
 
     public static Message sendEmbed(TextChannel channel, Member author, String title, String description) {
-        return sendEmbed(channel, author, title, embed -> embed.setDescription(description));
+        return sendEmbed(channel, author, title, embed -> embed.setDescription(description), true);
     }
 
     public static Message sendEmbed(TextChannel channel, Member author, String title, Consumer<EmbedBuilder> embedBuilderConsumer) {
+        return sendEmbed(channel, author, title, embedBuilderConsumer, true);
+    }
+
+    public static Message sendEmbed(TextChannel channel, Member author, String title, String description, boolean showDeleteReaction) {
+        return sendEmbed(channel, author, title, embed -> embed.setDescription(description), showDeleteReaction);
+    }
+
+    public static Message sendEmbed(TextChannel channel, Member author, String title, Consumer<EmbedBuilder> embedBuilderConsumer, boolean showDeleteReaction) {
         var message = channel.sendMessage(createEmbed(author, title, embedBuilderConsumer)).complete();
-        if (author != null) {
+        if (showDeleteReaction) {
             message.addReaction("U+1F5D1").queue();
+        }
+
+        if (author != null) {
             messageRequesters.put(message, author.getIdLong());
         }
         return message;

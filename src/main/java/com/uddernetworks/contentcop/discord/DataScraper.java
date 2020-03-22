@@ -1,40 +1,44 @@
 package com.uddernetworks.contentcop.discord;
 
+import com.uddernetworks.contentcop.ImageProcessor;
 import com.uddernetworks.contentcop.database.DatabaseManager;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.MessageEmbed;
 import net.dv8tion.jda.api.entities.TextChannel;
-import net.dv8tion.jda.internal.entities.GuildImpl;
-import org.apache.commons.io.IOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
+import java.util.BitSet;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class DataScraper {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(DataScraper.class);
+    private static final Pattern URL_PATTERN = Pattern.compile("(https?:\\/\\/(www\\.)?[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b(?:[-a-zA-Z0-9()@:%_\\+.~#?&\\/=]*))");
 
     private final DiscordManager discordManager;
     private final DatabaseManager databaseManager;
     private final BatchImageInserter batchImageInserter;
     private final ServerCache serverCache;
+    private final ImageProcessor imageProcessor;
 
-    public DataScraper(DiscordManager discordManager, DatabaseManager databaseManager, BatchImageInserter batchImageInserter, ServerCache serverCache) {
+    public DataScraper(DiscordManager discordManager, DatabaseManager databaseManager, BatchImageInserter batchImageInserter, ServerCache serverCache, ImageProcessor imageProcessor) {
         this.discordManager = discordManager;
         this.databaseManager = databaseManager;
         this.batchImageInserter = batchImageInserter;
         this.serverCache = serverCache;
+        this.imageProcessor = imageProcessor;
     }
 
     public CompletableFuture<Void> cleanData() {
@@ -43,7 +47,7 @@ public class DataScraper {
             LOGGER.info("There are {} incompletely scraped servers. Clearing them now...", incomplete.size());
             CompletableFuture.allOf(incomplete
                     .stream()
-                    .map(id -> new GuildImpl(null, id))
+                    .map(DummyGuild::new)
                     .map(this::deleteServer)
                     .toArray(CompletableFuture[]::new))
                     .thenRun(() -> LOGGER.info("Cleared dead servers"))
@@ -62,12 +66,23 @@ public class DataScraper {
 
     public CompletableFuture<Void> scrapeServer(Guild guild) {
         return databaseManager.addServer(guild).thenRun(() -> {
-            guild.getTextChannels().forEach(channel -> {
-//            var channel = guild.getTextChannelById(689489789698834633L);
-                LOGGER.info("Scraping {}", channel.getName());
+            CompletableFuture.allOf(guild.getTextChannels().stream().map(channel -> {
+                LOGGER.info("Scraping #{}", channel.getName());
+                return scrapeImages(channel).thenRun(() -> {
+                    LOGGER.info("Done scraping #{}", channel.getName());
+                });
+            }).toArray(CompletableFuture[]::new)).thenRun(() -> {
+                databaseManager.updateServer(guild, true).join();
+                LOGGER.info("Done scraping everything!");
+            }).join();
 
-                scrapeImages(channel).join();
-            });
+//            var message = guild.getTextChannelById(689489789698834633L).retrieveMessageById(691128873320185967L).complete();
+//            getImagesFrom(message).forEach(hash -> batchImageInserter.addHash(message, hash.toByteArray()).join());
+
+//            batchImageInserter.flushSync();
+
+//            databaseManager.updateServer(guild, true).join();
+//            LOGGER.info("bruhhhhh");
         }).exceptionally(t -> {
             LOGGER.error("Error!", t);
             return null;
@@ -80,56 +95,65 @@ public class DataScraper {
      * @param message The messages to get the images from
      * @return A list of bytes of all images in the given message
      */
-    public List<byte[]> getImagesFrom(Message message) {
+    public List<BitSet> getImagesFrom(Message message) {
+        var embeds = Collections.<String>emptyList();
+
+        if (!message.getFlags().contains(Message.MessageFlag.EMBEDS_SUPPRESSED)) {
+            embeds = message.getEmbeds().parallelStream()
+                    .map(MessageEmbed::getThumbnail)
+                    .filter(Objects::nonNull)
+                    .map(MessageEmbed.Thumbnail::getProxyUrl)
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toUnmodifiableList());
+        }
+
+        if (embeds.isEmpty()) {
+            embeds = URL_PATTERN.matcher(message.getContentRaw())
+                    .results()
+                    .map(result -> result.group(1))
+                    .collect(Collectors.toUnmodifiableList());
+        }
+
         return Stream.concat(
                 message.getAttachments().parallelStream()
                         .filter(Message.Attachment::isImage)
-                        .map(attachment -> getHash(attachment.retrieveInputStream().join())),
-                message.getEmbeds().parallelStream()
-                        .map(MessageEmbed::getThumbnail)
+                        .map(attachment -> imageProcessor.getHash(attachment.retrieveInputStream().join())),
+                embeds.stream()
+                        .map(this::getHash)
                         .filter(Objects::nonNull)
-                        .map(MessageEmbed.Thumbnail::getProxyUrl)
-                        .map(this::getHash))
+                        .map(imageProcessor::getHash)
+        )
+                .filter(Optional::isPresent)
+                .map(Optional::get)
                 .collect(Collectors.toUnmodifiableList());
     }
 
     private CompletableFuture<Void> scrapeImages(TextChannel channel) {
-        return CompletableFuture.runAsync(() ->
-                channel.getIterableHistory().cache(false).forEachAsync(message -> {
-                    getImagesFrom(message).forEach(hash -> batchImageInserter.addHash(message, hash));
-                    return true;
-                }).thenRunAsync(() -> {
-                    batchImageInserter.flushSync();
-                    databaseManager.updateServer(channel.getGuild(), true).join();
-                    LOGGER.info("Done scraping images!");
-                }));
+        return CompletableFuture.runAsync(() -> {
+            var history = channel.getHistory();
+
+            int maxMessages = 100_000; // 10k messages per channel max
+            int retrieveSize = 100; // 100 is the API's max
+
+            for (int i = 0; i < maxMessages / retrieveSize; i++) {
+                var curr = history.retrievePast(retrieveSize).complete();
+
+                curr.forEach(message -> getImagesFrom(message).forEach(hash -> batchImageInserter.addHash(message, hash.toByteArray()).join()));
+
+                if (curr.size() != maxMessages) {
+                    break;
+                }
+            }
+
+            batchImageInserter.flushSync();
+        });
     }
 
-    private byte[] getHash(String url) {
+    private InputStream getHash(String url) {
         try {
-            return getHash(new URL(url).openStream());
-        } catch (IOException e) {
-            return new byte[0];
-        }
-    }
-
-    private byte[] getHash(InputStream inputStream) {
-        try {
-            var md = MessageDigest.getInstance("SHA-512");
-            md.update(toSafeByteArray(inputStream));
-            return md.digest();
-        } catch (NoSuchAlgorithmException ignored) {
-            return new byte[0];
-        }
-    }
-
-    private byte[] toSafeByteArray(InputStream inputStream) {
-        try {
-            var bytes = IOUtils.toByteArray(inputStream);
-            inputStream.close();
-            return bytes;
+            return new URL(url).openStream();
         } catch (IOException ignored) {
-            return new byte[0];
+            return null;
         }
     }
 }

@@ -4,7 +4,7 @@ CREATE TABLE IF NOT EXISTS `images` (
     channel BIGINT            NOT NULL,
     message BIGINT            NOT NULL,
     author  BIGINT            NOT NULL,
-    content VARBINARY(64)     NOT NULL,
+    content VARBINARY(16384)  NOT NULL,
     UNIQUE (server, author, content)
 );
 
@@ -24,6 +24,9 @@ CREATE TABLE IF NOT EXISTS `users` (
 
 -- [select_image, query] Gets a single image by its hash in a server
 SELECT * FROM `images` WHERE server = ? AND content = ?;
+
+-- [select_images, query] Gets all images in a server
+SELECT * FROM `images` WHERE server = ?;
 
 -- [add_image, update] Inserts an image
 INSERT INTO `images` (server, channel, message, author, content) VALUES (?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE server = server;

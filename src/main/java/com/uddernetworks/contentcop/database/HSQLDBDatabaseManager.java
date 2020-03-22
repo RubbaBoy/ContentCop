@@ -1,6 +1,7 @@
 package com.uddernetworks.contentcop.database;
 
 import com.uddernetworks.contentcop.ContentCop;
+import com.uddernetworks.contentcop.utility.SEntry;
 import com.uddernetworks.contentcop.database.bind.BindType;
 import com.uddernetworks.contentcop.database.bind.Binder;
 import com.uddernetworks.contentcop.database.bind.ResourceBinder;
@@ -19,15 +20,16 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
-import static com.uddernetworks.contentcop.Utility.getFirst;
+import static com.uddernetworks.contentcop.utility.Utility.getFirst;
+import static com.uddernetworks.contentcop.utility.Utility.mapFromList;
 
 public class HSQLDBDatabaseManager implements DatabaseManager {
 
@@ -91,34 +93,74 @@ public class HSQLDBDatabaseManager implements DatabaseManager {
             statement.setLong(1, guild.getIdLong());
             statement.setBytes(2, content);
 
-            var first = getFirst(iterResultSet(statement.executeQuery()));
-
-            return first
+            return getFirst(iterResultSet(statement.executeQuery()))
                     .map(res -> new DatabaseImage(guild.getIdLong(), res.get("channel"), res.get("message"), res.get("author"), content));
         }, Optional.empty());
     }
 
     @Override
+    public CompletableFuture<List<DatabaseImage>> getImages(Guild guild) {
+        return query("select_images", statement -> {
+            statement.setLong(1, guild.getIdLong());
+
+            return iterResultSet(statement.executeQuery()).stream()
+                    .map(res -> new DatabaseImage(guild.getIdLong(), res.get("channel"), res.get("message"), res.get("author"), res.get("content")))
+                    .collect(Collectors.toUnmodifiableList());
+        });
+    }
+
+    private Entry<long[], byte[]> insertableImage(DatabaseImage image) {
+        return new SEntry<>(new long[]{image.getServer(), image.getChannel(), image.getMessage(), image.getAuthor()}, image.getContent());
+    }
+
+    private Entry<long[], byte[]> insertableImage(Entry<Message, byte[]> entry) {
+        return insertableImage(entry.getKey(), entry.getValue());
+    }
+
+    private Entry<long[], byte[]> insertableImage(Message message, byte[] content) {
+        return new SEntry<>(new long[]{message.getGuild().getIdLong(), message.getChannel().getIdLong(), message.getIdLong(), message.getAuthor().getIdLong()}, content);
+    }
+
+    @Override
+    public CompletableFuture<Void> addImage(DatabaseImage databaseImage) {
+        return addImage(insertableImage(databaseImage));
+    }
+
+    @Override
     public CompletableFuture<Void> addImage(Message message, byte[] content) {
+        return addImage(insertableImage(message, content));
+    }
+
+    private CompletableFuture<Void> addImage(Entry<long[], byte[]> entry) {
         return update("add_image", statement -> {
-            statement.setLong(1, message.getGuild().getIdLong());
-            statement.setLong(2, message.getChannel().getIdLong());
-            statement.setLong(3, message.getIdLong());
-            statement.setLong(4, message.getAuthor().getIdLong());
-            statement.setBytes(5, content);
+            var key = entry.getKey();
+            statement.setLong(1, key[0]);
+            statement.setLong(2, key[1]);
+            statement.setLong(3, key[2]);
+            statement.setLong(4, key[3]);
+            statement.setBytes(5, entry.getValue());
         });
     }
 
     @Override
+    public CompletableFuture<Void> addImages(List<DatabaseImage> data) {
+        return addRawImages(data.stream().map(this::insertableImage).collect(mapFromList()));
+    }
+
+    @Override
     public CompletableFuture<Void> addImages(Map<Message, byte[]> data) {
+        return addRawImages(data.entrySet().stream().map(this::insertableImage).collect(mapFromList()));
+    }
+
+    private CompletableFuture<Void> addRawImages(Map<long[], byte[]> data) {
         LOGGER.info("Adding {} images", data.size());
         return update("add_image", statement -> {
             data.forEach((message, content) -> {
                 try {
-                    statement.setLong(1, message.getGuild().getIdLong());
-                    statement.setLong(2, message.getChannel().getIdLong());
-                    statement.setLong(3, message.getIdLong());
-                    statement.setLong(4, message.getAuthor().getIdLong());
+                    statement.setLong(1, message[0]);
+                    statement.setLong(2, message[1]);
+                    statement.setLong(3, message[2]);
+                    statement.setLong(4, message[3]);
                     statement.setBytes(5, content);
                     statement.addBatch();
                 } catch (SQLException e) {

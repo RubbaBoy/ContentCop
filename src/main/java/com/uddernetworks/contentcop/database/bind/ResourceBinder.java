@@ -1,6 +1,6 @@
 package com.uddernetworks.contentcop.database.bind;
 
-import com.uddernetworks.contentcop.Utility;
+import com.uddernetworks.contentcop.utility.Utility;
 
 import java.util.List;
 import java.util.regex.Pattern;

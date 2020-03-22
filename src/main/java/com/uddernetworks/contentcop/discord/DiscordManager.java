@@ -9,12 +9,17 @@ import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
 import net.dv8tion.jda.api.OnlineStatus;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
+import net.dv8tion.jda.api.requests.GatewayIntent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.security.auth.login.LoginException;
 
+import java.util.Arrays;
+import java.util.stream.Collectors;
+
 import static com.uddernetworks.contentcop.config.Config.TOKEN;
+import static net.dv8tion.jda.api.requests.GatewayIntent.*;
 
 public class DiscordManager extends ListenerAdapter {
 
@@ -29,7 +34,7 @@ public class DiscordManager extends ListenerAdapter {
         this.contentCop = contentCop;
         this.configManager = configManager;
 
-        this.jda = JDABuilder.createDefault(configManager.get(TOKEN))
+        this.jda = JDABuilder.create(configManager.<String>get(TOKEN), Arrays.stream(values()).collect(Collectors.toUnmodifiableList()))
                 .setStatus(OnlineStatus.ONLINE)
                 .addEventListeners(this)
                 .addEventListeners(new EmbedUtils())
@@ -46,7 +51,7 @@ public class DiscordManager extends ListenerAdapter {
                 .registerCommand(HelpCommand::new)
                 .registerCommand(SetupCommand::new);
 
-          jda.addEventListener(new MessageListener(jda, contentCop.getDatabaseManager(), contentCop.getDataScraper(), contentCop.getBatchImageInserter(), contentCop.getServerCache()));
+          jda.addEventListener(new MessageListener(jda, contentCop.getDatabaseManager(), contentCop.getDataScraper(), contentCop.getBatchImageInserter(), contentCop.getServerCache(), contentCop.getImageProcessor()));
     }
 
     public JDA getJDA() {

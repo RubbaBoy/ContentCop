@@ -1,24 +1,29 @@
 package com.uddernetworks.contentcop.discord;
 
+import com.uddernetworks.contentcop.database.DatabaseImage;
 import com.uddernetworks.contentcop.database.DatabaseManager;
+import com.uddernetworks.contentcop.image.ImageStore;
 import net.dv8tion.jda.api.entities.Message;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class BatchImageInserter {
 
-    private final DatabaseManager databaseManager;
-    private final Map<Message, byte[]> hashes = new ConcurrentHashMap<>();
+    private final ImageStore imageStore;
+    private final List<DatabaseImage> hashes = Collections.synchronizedList(new ArrayList<>());
 
-    public BatchImageInserter(DatabaseManager databaseManager) {
-        this.databaseManager = databaseManager;
+    public BatchImageInserter(ImageStore imageStore) {
+        this.imageStore = imageStore;
     }
 
     public CompletableFuture<Void> addHash(Message message, byte[] bytes) {
-        hashes.put(message, bytes);
+        hashes.add(new DatabaseImage(message, bytes));
         if (hashes.size() >= 10000) {
             return flush();
         }
@@ -31,7 +36,7 @@ public class BatchImageInserter {
             return CompletableFuture.completedFuture(null);
         }
 
-        var future = databaseManager.addImages(new HashMap<>(hashes));
+        var future = imageStore.addImages(new ArrayList<>(hashes));
         hashes.clear();
         return future;
     }

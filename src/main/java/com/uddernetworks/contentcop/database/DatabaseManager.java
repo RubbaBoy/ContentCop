@@ -16,7 +16,13 @@ public interface DatabaseManager {
 
     CompletableFuture<Optional<DatabaseImage>> getImage(Guild guild, byte[] content);
 
+    CompletableFuture<List<DatabaseImage>> getImages(Guild guild);
+
+    CompletableFuture<Void> addImage(DatabaseImage databaseImage);
+
     CompletableFuture<Void> addImage(Message message, byte[] content);
+
+    CompletableFuture<Void> addImages(List<DatabaseImage> data);
 
     CompletableFuture<Void> addImages(Map<Message, byte[]> data);
 

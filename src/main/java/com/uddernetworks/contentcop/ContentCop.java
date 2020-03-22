@@ -9,11 +9,15 @@ import com.uddernetworks.contentcop.discord.DataScraper;
 import com.uddernetworks.contentcop.discord.DiscordManager;
 import com.uddernetworks.contentcop.discord.HelpUtility;
 import com.uddernetworks.contentcop.discord.ServerCache;
+import com.uddernetworks.contentcop.image.DBBackedImageStore;
+import com.uddernetworks.contentcop.image.ImageStore;
+import com.uddernetworks.contentcop.image.PerceptualImageProcessor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.security.auth.login.LoginException;
 import java.io.File;
+import java.io.IOException;
 import java.sql.SQLException;
 
 import static com.uddernetworks.contentcop.config.Config.DATABASE_PATH;
@@ -27,10 +31,12 @@ public class ContentCop {
     private final DiscordManager discordManager;
     private final ServerCache serverCache;
     private final DatabaseManager databaseManager;
+    private final ImageStore imageStore;
     private final BatchImageInserter batchImageInserter;
+    private final ImageProcessor imageProcessor;
     private final DataScraper dataScraper;
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws IOException {
         if (args.length < 1) {
             LOGGER.error("You must supply the config file to use");
             return;
@@ -48,12 +54,16 @@ public class ContentCop {
         this.databaseManager = new HSQLDBDatabaseManager(this, configManager.get(DATABASE_PATH));
         this.serverCache = new ServerCache(databaseManager);
         this.discordManager = new DiscordManager(this, configManager);
-        this.batchImageInserter = new BatchImageInserter(databaseManager);
-        this.dataScraper = new DataScraper(discordManager, databaseManager, batchImageInserter, serverCache);
+        this.imageStore = new DBBackedImageStore(databaseManager);
+        this.batchImageInserter = new BatchImageInserter(imageStore);
+        this.imageProcessor = new PerceptualImageProcessor(databaseManager, imageStore);
+        this.dataScraper = new DataScraper(discordManager, databaseManager, batchImageInserter, serverCache, imageProcessor);
 
         dataScraper.cleanData().join();
 
         discordManager.init();
+
+        imageStore.init();
 
         HelpUtility.setCommandPrefix(configManager.get(PREFIX));
     }
@@ -74,12 +84,20 @@ public class ContentCop {
         return databaseManager;
     }
 
+    public ImageStore getImageStore() {
+        return imageStore;
+    }
+
     public ServerCache getServerCache() {
         return serverCache;
     }
 
     public BatchImageInserter getBatchImageInserter() {
         return batchImageInserter;
+    }
+
+    public ImageProcessor getImageProcessor() {
+        return imageProcessor;
     }
 
     public DataScraper getDataScraper() {
