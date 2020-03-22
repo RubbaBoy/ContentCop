@@ -4,6 +4,7 @@ import com.uddernetworks.contentcop.ContentCop;
 import com.uddernetworks.contentcop.config.ConfigManager;
 import com.uddernetworks.contentcop.discord.command.CommandManager;
 import com.uddernetworks.contentcop.discord.command.HelpCommand;
+import com.uddernetworks.contentcop.discord.command.LeaderboardCommand;
 import com.uddernetworks.contentcop.discord.command.SetupCommand;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
@@ -49,7 +50,8 @@ public class DiscordManager extends ListenerAdapter {
     public void init() {
           commandManager
                 .registerCommand(HelpCommand::new)
-                .registerCommand(SetupCommand::new);
+                .registerCommand(SetupCommand::new)
+                .registerCommand(LeaderboardCommand::new);
 
           jda.addEventListener(new MessageListener(jda, contentCop.getDatabaseManager(), contentCop.getDataScraper(), contentCop.getBatchImageInserter(), contentCop.getServerCache(), contentCop.getImageProcessor()));
     }

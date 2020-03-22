@@ -231,7 +231,7 @@ public class HSQLDBDatabaseManager implements DatabaseManager {
 
             return iterResultSet(statement.executeQuery())
                     .stream()
-                    .collect(Collectors.toUnmodifiableMap(res -> res.<Long>get("user"), res -> res.<Integer>get("reposts")));
+                    .collect(Collectors.toUnmodifiableMap(res -> res.<Long>get("author"), res -> res.<Integer>get("reposts")));
         }, Collections.emptyMap());
     }
 

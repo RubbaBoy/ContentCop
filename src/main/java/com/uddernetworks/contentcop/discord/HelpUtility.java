@@ -4,9 +4,10 @@ import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.TextChannel;
 
+import static com.uddernetworks.contentcop.utility.Utility.ZWS;
+
 public class HelpUtility {
 
-    public static final char ZWS = '\u200b';
     private static String commandPrefix = "/";
 
     public static void send(Member member, TextChannel channel) {
@@ -31,10 +32,6 @@ public class HelpUtility {
 
     private static String commandRow(String name, String description) {
         return ("    **" + name + "**" + " ".repeat(7)).replace(" ", ZWS + " ") + " - " + description + "\n";
-    }
-
-    public static String space(int amount) {
-        return (ZWS + " ").repeat(amount);
     }
 
     public static void setCommandPrefix(String commandPrefix) {

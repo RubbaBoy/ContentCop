@@ -65,26 +65,16 @@ public class DataScraper {
     }
 
     public CompletableFuture<Void> scrapeServer(Guild guild) {
-        return databaseManager.addServer(guild).thenRun(() -> {
-            CompletableFuture.allOf(guild.getTextChannels().stream().map(channel -> {
-                LOGGER.info("Scraping #{}", channel.getName());
-                return scrapeImages(channel).thenRun(() -> {
-                    LOGGER.info("Done scraping #{}", channel.getName());
-                });
-            }).toArray(CompletableFuture[]::new)).thenRun(() -> {
-                databaseManager.updateServer(guild, true).join();
-                LOGGER.info("Done scraping everything!");
-            }).join();
-
-//            var message = guild.getTextChannelById(689489789698834633L).retrieveMessageById(691128873320185967L).complete();
-//            getImagesFrom(message).forEach(hash -> batchImageInserter.addHash(message, hash.toByteArray()).join());
-
-//            batchImageInserter.flushSync();
-
-//            databaseManager.updateServer(guild, true).join();
-//            LOGGER.info("bruhhhhh");
-        }).exceptionally(t -> {
-            LOGGER.error("Error!", t);
+        return databaseManager.addServer(guild).thenRun(() ->
+                CompletableFuture.allOf(guild.getTextChannels().stream().map(channel -> {
+                    LOGGER.info("Scraping #{}", channel.getName());
+                    return scrapeImages(channel).thenRun(() ->
+                            LOGGER.info("Done scraping #{}", channel.getName()));
+                }).toArray(CompletableFuture[]::new)).thenRun(() -> {
+                    databaseManager.updateServer(guild, true).join();
+                    LOGGER.info("Done scraping everything!");
+                }).join()).exceptionally(t -> {
+            LOGGER.error("Error while scraping server!", t);
             return null;
         });
     }

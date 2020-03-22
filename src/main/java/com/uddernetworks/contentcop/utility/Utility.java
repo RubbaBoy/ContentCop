@@ -17,8 +17,15 @@ import java.util.stream.Stream;
 
 public class Utility {
 
-    private static final Set<Collector.Characteristics> CH_ID
-            = Collections.unmodifiableSet(EnumSet.of(Collector.Characteristics.IDENTITY_FINISH));
+    public static final char ZWS = '\u200b';
+
+    public static String space(int amount) {
+        return (ZWS + " ").repeat(amount);
+    }
+
+    public static String padRight(String string, int amount) {
+        return string + space(Math.max(amount - string.length(), 0));
+    }
 
     public static String readResource(String resource) {
         return new BufferedReader(new InputStreamReader(Utility.class.getResourceAsStream("/" + resource))).lines().collect(Collectors.joining("\n"));
