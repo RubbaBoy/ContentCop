@@ -12,11 +12,15 @@ import com.uddernetworks.contentcop.discord.ServerCache;
 import com.uddernetworks.contentcop.image.DBBackedImageStore;
 import com.uddernetworks.contentcop.image.DHashImageProcessor;
 import com.uddernetworks.contentcop.image.ImageStore;
+import com.uddernetworks.contentcop.utility.Utility;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.security.auth.login.LoginException;
 import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.StandardOpenOption;
 import java.sql.SQLException;
 
 import static com.uddernetworks.contentcop.config.Config.DATABASE_PATH;
@@ -36,20 +40,30 @@ public class ContentCop {
     private final DataScraper dataScraper;
 
     public static void main(String[] args) {
+        var configPath = "config.conf";
         if (args.length < 1) {
-            LOGGER.error("You must supply the config file to use");
-            return;
+            LOGGER.info("Using default config at \"config.conf\"");
+        } else {
+            configPath = args[0];
         }
 
         try {
-            new ContentCop(args[0]).main();
-        } catch (SQLException | LoginException e) {
+            var config = new File(configPath);
+            if (!config.exists()) {
+                LOGGER.info("Given config does not exist! Generating it at {}", config.getAbsolutePath());
+                Files.write(config.toPath(), Utility.readResource("config.conf").getBytes(), StandardOpenOption.CREATE);
+                LOGGER.info("Fill out the config and restart.");
+                return;
+            }
+
+            new ContentCop(config).main();
+        } catch (SQLException | LoginException | IOException e) {
             LOGGER.error("An error has occurred during initialization", e);
         }
     }
 
-    public ContentCop(String config) throws SQLException, LoginException {
-        this.configManager = new HOCONConfigManager(new File(config));
+    public ContentCop(File config) throws SQLException, LoginException {
+        this.configManager = new HOCONConfigManager(config);
         this.databaseManager = new HSQLDBDatabaseManager(this, configManager.get(DATABASE_PATH));
         this.serverCache = new ServerCache(databaseManager);
         this.discordManager = new DiscordManager(this, configManager);

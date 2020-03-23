@@ -14,7 +14,6 @@ import org.slf4j.LoggerFactory;
 import java.awt.Color;
 
 import static com.uddernetworks.contentcop.utility.Utility.padRight;
-import static com.uddernetworks.contentcop.utility.Utility.space;
 
 public class InfoCommand extends Command {
 
@@ -37,14 +36,21 @@ public class InfoCommand extends Command {
     public void onCommand(Member author, TextChannel channel, String[] args) {
         var guild = channel.getGuild();
 
-        var users = databaseManager.getUsers(guild).join();
-        EmbedUtils.sendEmbed(channel, author, "Repost Cop Information On " + guild.getName(), embed ->
-                embed.setDescription("Information on stuff for the current guild.\n\n" +
-                        padRight(bold(getImageCount(guild)), 12) + "Images stored\n" +
-                        padRight(bold(users.size()), 12) + "Users who have reposted\n" +
-                        padRight(bold(users.values().stream().mapToInt(i -> i).sum()), 12) + "Total reposts"
-                ).setColor(COLOR)
-        );
+        databaseManager.getServer(guild).thenAccept(optional ->
+                optional.ifPresentOrElse(complete -> {
+                    if (complete) {
+                        var users = databaseManager.getUsers(guild).join();
+                        EmbedUtils.sendEmbed(channel, author, "Repost Cop Information On " + guild.getName(), embed ->
+                                embed.setDescription("Information on stuff for the current guild.\n\n" +
+                                        padRight(bold(getImageCount(guild)), 12) + "Images stored\n" +
+                                        padRight(bold(users.size()), 12) + "Users who have reposted\n" +
+                                        padRight(bold(users.values().stream().mapToInt(i -> i).sum()), 12) + "Total reposts"
+                                ).setColor(COLOR)
+                        );
+                    } else {
+                        EmbedUtils.error(channel, author, "The server is currently in the process of being scraped. If it isn't, you're shit out of luck.");
+                    }
+                }, () -> EmbedUtils.error(channel, author, "The server has not been set up yet. Run **/setup** to start.")));
     }
 
     private String getImageCount(Guild guild) {

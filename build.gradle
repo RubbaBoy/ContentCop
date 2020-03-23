@@ -1,13 +1,14 @@
 plugins {
     id 'java'
     id 'application'
+    id 'com.github.johnrengelman.shadow' version '5.2.0'
 }
 
 group 'com.uddernetworks.contentcop'
-version '1.0.0-SNAPSHOT'
+version '1.0.0'
 
-sourceCompatibility = 13
-targetCompatibility = 13
+sourceCompatibility = 12
+targetCompatibility = 12
 
 mainClassName = 'com.uddernetworks.contentcop.ContentCop'
 

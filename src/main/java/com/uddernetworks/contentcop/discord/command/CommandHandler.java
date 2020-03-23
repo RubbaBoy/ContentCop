@@ -20,7 +20,6 @@ public class CommandHandler extends ListenerAdapter {
     @Override
     public void onGuildMessageReceived(@Nonnull GuildMessageReceivedEvent event) {
         var author = event.getAuthor();
-        if (author.getIdLong() != 249962392241307649L) return;
         var member = event.getGuild().getMember(author);
         var channel = event.getChannel();
         if (author.isBot() || author.isFake()) return;

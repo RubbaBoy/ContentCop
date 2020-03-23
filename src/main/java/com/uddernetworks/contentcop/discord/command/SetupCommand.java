@@ -44,6 +44,7 @@ public class SetupCommand extends Command {
                                 .thenRun(() -> {
                                     databaseManager.updateServer(guild, true).join();
                                     serverCache.addServer(guild.getIdLong());
+                                    EmbedUtils.sendEmbed(channel, author, "Bot Ready", "Processed in " + (System.currentTimeMillis() - start) + "ms", embed -> embed.setDescription("Scraping has been complete. Images will now be read and flagged as reposts."));
                                     LOGGER.info("Done scraping server after {}ms", System.currentTimeMillis() - start);
                                 });
                     } catch (Exception e) {

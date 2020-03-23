@@ -67,7 +67,11 @@ public class EmbedUtils extends ListenerAdapter {
         String icon = null;
 
         if (author != null) {
-            footer = "Requested by " + author.getEffectiveName() + " | " + footer;
+            if (!footer.equals("")) {
+                footer = " | " + footer;
+            }
+
+            footer = "Requested by " + author.getEffectiveName() + footer;
             icon = author.getUser().getAvatarUrl();
         }
 
