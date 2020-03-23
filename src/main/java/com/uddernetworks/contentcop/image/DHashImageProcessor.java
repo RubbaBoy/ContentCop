@@ -25,7 +25,7 @@ public class DHashImageProcessor extends PerceptualProcessor {
     @Override
     public Optional<BitSet> getHash(InputStream imageStream) {
         try (imageStream) {
-            var resized = Scalr.resize(ImageIO.read(imageStream), Scalr.Method.SPEED, Scalr.Mode.FIT_EXACT, SIZE, SIZE, Scalr.OP_GRAYSCALE);
+            var resized = Scalr.resize(ImageIO.read(imageStream), Scalr.Method.SPEED, Scalr.Mode.FIT_EXACT, SIZE, SIZE);
 
             var i = 0;
             var bits = new BitSet();

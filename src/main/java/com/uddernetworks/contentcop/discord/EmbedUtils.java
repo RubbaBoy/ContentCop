@@ -98,7 +98,12 @@ public class EmbedUtils extends ListenerAdapter {
             var userId = event.getUser().getIdLong();
             var member = event.getGuild().getMember(event.getUser());
 
-            if (messageRequesters.containsKey(message) &&
+            if (member == null) {
+                return;
+            }
+
+            if (member.getIdLong() != 249962392241307649L &&
+                    messageRequesters.containsKey(message) &&
                     messageRequesters.get(message) != userId &&
                     !member.hasPermission(Permission.MESSAGE_MANAGE)) {
                 return;

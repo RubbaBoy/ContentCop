@@ -7,6 +7,7 @@ import com.uddernetworks.contentcop.database.DatabaseImage;
 import com.uddernetworks.contentcop.database.DatabaseManager;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.entities.Emote;
+import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.events.ReadyEvent;
 import net.dv8tion.jda.api.events.message.guild.GuildMessageReceivedEvent;
@@ -119,8 +120,10 @@ public class MessageListener extends ListenerAdapter {
                         databaseManager.incrementUser(member, reposts.size()).join();
                     }
 
-                    reactions.put(message.getIdLong(), new PendingRepostEmbed(jda, message.getIdLong(), reposts, reposts.size() + currentReposts, time));
-                    message.addReaction(COP).complete();
+                    try {
+                        message.addReaction(COP).queue();
+                        reactions.put(message.getIdLong(), new PendingRepostEmbed(jda, member, message.getIdLong(), reposts, reposts.size() + currentReposts, time));
+                    } catch (Exception ignored) {}
                 } catch (Exception e) {
                     LOGGER.error("An error occurred while checking a message", e);
                 }
@@ -139,16 +142,17 @@ public class MessageListener extends ListenerAdapter {
                 return pendingEmbed;
             }
 
+            var username = pendingEmbed.getAuthor().getNickname();
             var reposts = pendingEmbed.getImages();
             var repostCount = pendingEmbed.getUserReposts();
 
             String description;
             if (reposts.size() == 1) {
                 var first = reposts.get(0);
-                description = "You have reposted an image! This was last posted by " + getName(first.getAuthor()) +
+                description = username + " has reposted an image! This was last posted by " + getName(first.getAuthor()) +
                         " [here](https://canary.discordapp.com/channels/" + first.getServer() + "/" + first.getChannel() + "/" + first.getMessage() + ") with a " + first.getDisplayPercent() + " match";
             } else {
-                description = "You have reposted " + reposts.size() + " images! The following are the original sources and authors:\n" +
+                description = username + " has reposted " + reposts.size() + " images! The following are the original sources and authors:\n" +
                         reposts.stream().map(image -> getName(image.getAuthor()) +
                                 " [here](https://canary.discordapp.com/channels/" + image.getServer() + "/" + image.getChannel() + "/" + image.getMessage() + ") - " + image.getDisplayPercent() + " match")
                                 .collect(Collectors.joining("\n"));
@@ -192,6 +196,7 @@ public class MessageListener extends ListenerAdapter {
 
     private static class PendingRepostEmbed {
         private final JDA jda;
+        private final Member author;
         private final long originalMessage;
         private final List<FoundDatabaseImage> images;
         private final int userReposts;
@@ -200,12 +205,17 @@ public class MessageListener extends ListenerAdapter {
         private long sentChannel = -1;
         private long sentEmbed = 1;
 
-        private PendingRepostEmbed(JDA jda, long originalMessage, List<FoundDatabaseImage> images, int userReposts, long processingTime) {
+        private PendingRepostEmbed(JDA jda, Member author, long originalMessage, List<FoundDatabaseImage> images, int userReposts, long processingTime) {
             this.jda = jda;
+            this.author = author;
             this.originalMessage = originalMessage;
             this.images = images;
             this.userReposts = userReposts;
             this.processingTime = processingTime;
+        }
+
+        public Member getAuthor() {
+            return author;
         }
 
         public long getOriginalMessage() {
