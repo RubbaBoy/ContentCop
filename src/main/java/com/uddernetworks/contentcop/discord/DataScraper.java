@@ -25,7 +25,7 @@ import java.util.stream.Stream;
 public class DataScraper {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(DataScraper.class);
-    private static final Pattern URL_PATTERN = Pattern.compile("(https?:\\/\\/(www\\.)?[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b(?:[-a-zA-Z0-9()@:%_\\+.~#?&\\/=]*))");
+    private static final Pattern URL_PATTERN = Pattern.compile("(http(?:|s)?:\\/\\/(www\\.)?[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b(?:[-a-zA-Z0-9()@:%_\\+.~#?&\\/=]*))");
 
     private final DiscordManager discordManager;
     private final DatabaseManager databaseManager;
@@ -109,7 +109,7 @@ public class DataScraper {
                         .filter(Message.Attachment::isImage)
                         .map(attachment -> imageProcessor.getHash(attachment.retrieveInputStream().join())),
                 embeds.stream()
-                        .map(this::getHash)
+                        .map(this::getInputStream)
                         .filter(Objects::nonNull)
                         .map(imageProcessor::getHash)
         )
@@ -122,7 +122,7 @@ public class DataScraper {
         return CompletableFuture.runAsync(() -> {
             var history = channel.getHistory();
 
-            int maxMessages = 100_000; // 10k messages per channel max
+            int maxMessages = 10_000; // 10k messages per channel max
             int retrieveSize = 100; // 100 is the API's max
 
             for (int i = 0; i < maxMessages / retrieveSize; i++) {
@@ -139,7 +139,7 @@ public class DataScraper {
         });
     }
 
-    private InputStream getHash(String url) {
+    private InputStream getInputStream(String url) {
         try {
             return new URL(url).openStream();
         } catch (IOException ignored) {

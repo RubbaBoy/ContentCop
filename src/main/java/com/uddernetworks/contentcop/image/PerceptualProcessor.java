@@ -6,6 +6,7 @@ import com.uddernetworks.contentcop.utility.SEntry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.math.BigInteger;
 import java.util.BitSet;
 import java.util.Comparator;
 import java.util.Map;
@@ -27,8 +28,16 @@ public abstract class PerceptualProcessor implements ImageProcessor {
 
     private int getDifference(byte[] bytes, BitSet testing) {
         var original = BitSet.valueOf(bytes);
-        original.xor(testing);
-        return original.cardinality();
+        var xor = original.size() > testing.size()
+                ? xor(original, testing)
+                : xor(testing, original);
+        return xor.cardinality();
+    }
+
+    private BitSet xor(BitSet one, BitSet two) {
+        var original = BitSet.valueOf(one.toByteArray());
+        original.xor(two);
+        return original;
     }
 
     @Override
